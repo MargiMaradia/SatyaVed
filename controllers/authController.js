@@ -4,36 +4,45 @@ const generateToken = require("../utils/generateToken");
 // Registration controller
 const register = async (req, res) => {
     try {
-        const { username, email, password } = req.body;
+        console.log(req.body);  // Should output fullName, email, password
 
-        // If email is admin@gmail.com, assign admin; otherwise, user
+        const { fullName, email, password } = req.body;
+        if (!fullName || !email || !password) {
+            return res.status(400).json({ message: "All fields are required" });
+
+        }
         let role = "user";
         if (email === "admin@gmail.com") {
             role = "admin";
         }
-
-        const user = new User({ username, email, password, role });
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            return res.status(409).json({ message: "Email already registered" });
+        }
+        const user = new User({ fullName, email, password, role });
         await user.save();
-
-        res.status(201).json({ message: "User registered", user });
+        res.status(201).json({ message: "User registered successfully" });
     } catch (err) {
-        console.error("Actual error:", err);
+        console.error("Signup error:", err);
         res.status(400).json({ message: err.message });
     }
 };
+
 
 // Login controller
 const loginUser = async (req, res) => {
     try {
         const { email, password } = req.body;
+
         if (!email || !password) {
             return res.status(400).json({ message: "Email and password are required" });
         }
+
         const user = await User.findOne({ email });
         if (user && (await user.matchPassword(password))) {
             res.json({
                 _id: user._id,
-                username: user.username,
+                fullName: user.fullName,   // ✅ return fullName now
                 email: user.email,
                 role: user.role,
                 token: generateToken(user)
@@ -47,7 +56,6 @@ const loginUser = async (req, res) => {
     }
 };
 
-// Export both functions ONLY with module.exports at the end
 module.exports = {
     register,
     loginUser
